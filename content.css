@@ -2,6 +2,19 @@
   background-color: transparent;
 }
 
+.highlighter-active * {
+  cursor: none !important;
+}
+
+.highlighter-active a,
+.highlighter-active button,
+.highlighter-active input,
+.highlighter-active textarea,
+.highlighter-active select,
+.highlighter-active [role="button"] {
+    pointer-events: none !important;
+}
+
 .highlight {
   position: absolute;
   background: rgba(255, 255, 0, 0.5);
@@ -9,7 +22,31 @@
   border-radius: 20%;
   /* padding: 0 2px; */
   pointer-events: none;
-  z-index: 999999;
+  z-index: 0;
   mix-blend-mode: multiply;
   /* opacity: 0.5; */
+}
+
+.cursor {
+  display: none;
+  pointer-events: none; /* Needed to prevent our cursor from becoming the unintended target of our mouse events */
+  position: fixed; /* Required for setting inset values */
+  height: 32px;
+  width: 32px;
+  border-radius: 32px;
+  background-color: rgba(255, 255, 0, 0.5);
+  transform: translate(-50%, -50%); /* Centers circle to cursor location */
+  transform-origin: top left;
+  /* overflow: visible; */
+}
+
+.cursor.delete-icon::after {
+  content: "";
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 8px;
+  height: 8px;
+  background-image: url("images/delete.png");
+  z-index: 999999;
 }

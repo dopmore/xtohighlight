@@ -1,5 +1,5 @@
 {
-  "name": "xtohighligh",
+  "name": "xtohighlight",
   "description": "An extension for highlighting and managing highlights",
   "version": "1.0",
   "manifest_version": 3,
@@ -11,7 +11,8 @@
   },
   "permissions": [
     "storage",
-    "activeTab"
+    "activeTab",
+    "clipboardWrite"
   ],
   "content_scripts": [
     {
@@ -25,8 +26,5 @@
         "content.css"
       ]
     }
-  ],
-  "action": {
-    "default_popup": "popup.html"
-  }
+  ]
 }
