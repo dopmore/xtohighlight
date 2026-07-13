@@ -1,71 +1,70 @@
 console.log("loaded highlighter");
 
 let isHighlighterActive = false;
+let isHighlighting = false;
 
-let highlights = [];// [{start: number, end: number}]
-let highlightRects = [];
+let highlights = []; // [{start: number, end: number}]
+let highlightRects = []; // divs act as highlights
 let previewRects = [];
 
 let cursor = document.createElement("div");
 cursor.className = "cursor";
 document.body.appendChild(cursor);
 
-function getTextNodes() {
+function getTextNodes() { // filter out all the textNodes
   const walker = document.createTreeWalker(
     document.body, 
     NodeFilter.SHOW_TEXT,
     {
       acceptNode(node) {
-        return node.nodeValue.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+        return node.nodeValue.length ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
       }
     }
-  );
+  ); 
 
   const nodes = [];
 
-  while (walker.nextNode()) {
-    nodes.push(walker.currentNode);
-  }
+  while (walker.nextNode()) nodes.push(walker.currentNode);
 
   return nodes;
 }
 
 
-function getDocumentText() {
+function getDocumentText() { // rt one large string with all text combined without whitespace (stringed page Text)
   return getTextNodes().map(n => n.nodeValue).join("");
 }
 
 
-function rangeToOffsets(range) {
+function rangeToOffsets(range) { // convert DOM range into offset in the stringed page Text
   const nodes = getTextNodes();
 
   let start = 0;
   let end = 0;
 
-  let cursor = 0;
+  let currentChar = 0; // walk over the 
 
   for (const node of nodes) {
-
+    // find corresponding start/end node
     if (node === range.startContainer) {
-      start = cursor + range.startOffset;
+      start = currentChar + range.startOffset;
     }
 
-    if (node === range.endContainer) {
-      end = cursor + range.endOffset;
+    if (node === range.endContainer) { 
+      end = currentChar + range.endOffset;
     }
-
-    cursor += node.nodeValue.length;
+    if (start && end) break; // avoid searching after start and end have been found
+    currentChar += node.nodeValue.length;
   }
 
-  return {start: Math.min(start, end), end: Math.max(start, end)};
+  return {start: Math.min(start, end), end: Math.max(start, end)}; // allow selecting backwards
 }
 
 
-function offsetsToRange(start, end) {
+function offsetsToRange(start, end) { // converts offset in the stringed page Text to DOM range
 
   const nodes = getTextNodes();
 
-  let cursor = 0;
+  let currentChar = 0;
 
   let startNode = null;
   let startOffset = 0;
@@ -75,19 +74,19 @@ function offsetsToRange(start, end) {
 
   for (const node of nodes) {
 
-    const next = cursor + node.nodeValue.length;
+    const next = currentChar + node.nodeValue.length;
 
-    if (startNode === null && start >= cursor && start <= next) {
+    if (!startNode && start >= currentChar && start <= next) {
       startNode = node;
-      startOffset = start - cursor;
+      startOffset = start - currentChar;
     }
 
-    if ( endNode === null && end >= cursor && end <= next) {
+    if (!endNode && end >= currentChar && end <= next) {
       endNode = node;
-      endOffset = end - cursor;
+      endOffset = end - currentChar;
     }
 
-    cursor = next;
+    currentChar = next;
   }
 
 
@@ -101,18 +100,18 @@ function offsetsToRange(start, end) {
   return range;
 }
 
-function mergeHighlight(newHighlight) {
+function mergeHighlight(newHighlight) { // collapse overlaps into as little highlights as possible
 
   let result = [];
 
-  let merged = {start: newHighlight.start, end: newHighlight.end};
+  let merged = {...newHighlight};
 
   for (const h of highlights) {
 
     const overlap = merged.start <= h.end && merged.end >= h.start;
     const inside = merged.start >= h.start && merged.end <= h.end;
 
-    if (inside) {
+    if (inside) { // ignore new highlights inside existing Highlights
       return;
     }
 
@@ -130,25 +129,21 @@ function mergeHighlight(newHighlight) {
   highlights = result;
 }
 
-function clearRects(rects) {
+function clearRects(rects) { // rm all divs
   for (const r of rects) r.remove();
   rects.length = 0;
 }
 
 
-function drawRange(range, storage, highlightidx) {
+function drawRange(range, storage, highlightidx) { // draw divs
   for (const rect of range.getClientRects()) {
-    // filter out non text
-   
+    console.log(rect, range, range.getClientRects())
     const div = document.createElement("div");
 
     div.className = "highlight";
     div.dataset.index = highlightidx;
 
     const padding = 4;
-
-    div.style.position = "absolute";
-    div.style.pointerEvents = "none";
 
     div.style.left = `${rect.left + scrollX - padding}px`;
     div.style.top = `${rect.top + scrollY}px`;
@@ -161,7 +156,7 @@ function drawRange(range, storage, highlightidx) {
   }
 }
 
-function updateHighlights() {
+function updateHighlights() { // redraw highlights
   clearRects(highlightRects);
 
   highlights.forEach((h, index) => {
@@ -171,13 +166,12 @@ function updateHighlights() {
   });
 }
 
-function showPreview() {
-
+function showPreview() { // show current highlight (before mouselift)
   clearRects(previewRects);
 
   const selection = window.getSelection();
 
-  if ( !selection || selection.rangeCount === 0 || selection.isCollapsed) return;
+  if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return;
 
   const range = selection.getRangeAt(0);
 
@@ -191,7 +185,7 @@ function saveHighlight() {
   
   const selection = window.getSelection();
   
-  if ( !selection || selection.rangeCount === 0 || selection.isCollapsed)return;
+  if (!selection || selection.rangeCount === 0 || selection.isCollapsed)return;
   
   const range = selection.getRangeAt(0);
   if (!range.toString().trim()) return;
@@ -214,6 +208,7 @@ function saveHighlight() {
   console.log(highlights);
 }
 
+// EventListeners
 document.addEventListener("keydown", event => {
     // console.log(event.key); 
     if (event.target.isContentEditable ||
@@ -239,94 +234,58 @@ document.addEventListener("keydown", event => {
         updateHighlights();
         showPreview();
     }
-  }
-);
-
-document.addEventListener("mouseup", () => {
-    if (!isHighlighterActive) return;
-    saveHighlight();
-  }
-);
-
-document.addEventListener("selectionchange", () => {
-    if (!isHighlighterActive) return;
-    showPreview();
-  }
-);
-
-window.addEventListener("resize", () => {
-    if (!isHighlighterActive) return;
-    updateHighlights();
-  }
-);
+});
 
 document.addEventListener("mousemove", event => {
-    const element = document.elementFromPoint(event.clientX, event.clientY);
-    if (!element) return;
+  if (!isHighlighterActive) return;
+  const element = document.elementFromPoint(event.clientX, event.clientY);
+  if (!element) return;
+  
+  cursor.classList.toggle("delete-icon", event.target.classList.contains("highlight"));
+  
+  const fs = parseFloat(getComputedStyle(element).fontSize) || 16;
+  const h = Math.max(14, fs * 1.2);
+  const w = Math.max(10, fs * 0.7);
+  
+  cursor.style.width = `${w}px`;
+  cursor.style.height = `${h}px`;
+  cursor.style.left = `${event.clientX}px`;
+  cursor.style.top = `${event.clientY}px`;
+});
 
-    let hoveredHighlight = null;
-
-    for (const rect of highlightRects) {
-
-        const box = rect.getBoundingClientRect();
-
-        if (
-            event.clientX >= box.left &&
-            event.clientX <= box.right &&
-            event.clientY >= box.top &&
-            event.clientY <= box.bottom
-        ) {
-            hoveredHighlight = rect;
-            break;
-        }
-    };
-
-    if (hoveredHighlight && isHighlighterActive) {
-        cursor.classList.add("delete-icon");
-      } else {
-        cursor.classList.remove("delete-icon");
-    }
-
-
-    const fs = parseFloat(getComputedStyle(element).fontSize) || 16;
-    const h = Math.max(14, fs * 1.2);
-    const w = Math.max(10, fs * 0.7);
-
-    cursor.style.width = `${w}px`;
-    cursor.style.height = `${h}px`;
-    cursor.style.left = `${event.clientX}px`;
-    cursor.style.top = `${event.clientY}px`;
-  }
-);
-
+document.addEventListener("mouseup", () => {
+  if (!isHighlighterActive) return;
+  saveHighlight();
+  isHighlighting = false;
+  document.documentElement.style.setProperty("--highlights-selectable", "auto")
+});
 
 document.addEventListener("mousedown", event => {
   if (!isHighlighterActive) return;
-  let hoveredHighlight = null;
+  
+  if (event.target.classList.contains("highlight")) {
+    highlights.splice(Number(event.target.dataset.index), 1)
+    updateHighlights()
+  }
 
-  for (const rect of highlightRects) {
+  isHighlighting = true;
+  document.documentElement.style.setProperty("--highlights-selectable", "none");
+});
 
-    const box = rect.getBoundingClientRect();
+document.addEventListener("selectionchange", () => {
+  if (!isHighlighterActive) return;
+  showPreview();
+});
 
-    if (
-      event.clientX >= box.left &&
-      event.clientX <= box.right &&
-      event.clientY >= box.top &&
-      event.clientY <= box.bottom
-    ) {
-      const idx = Number(rect.dataset.index);
-      highlights.splice(idx, 1);
-      browser.storage.local.set({highlights});
-      updateHighlights();
-      break;
-    }
-  };
+window.addEventListener("resize", () => {
+  if (!isHighlighterActive) return;
+  updateHighlights();
 });
 
 // logic for not showing cursor when leaving window, idk works
 
 document.addEventListener("blur", () => {
-    cursor.style.display = "none";
+  cursor.style.display = "none";
 });
 
 document.addEventListener("focus", () => {
