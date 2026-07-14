@@ -6,121 +6,56 @@ let isHighlighting = false;
 let highlights = []; // [{start: number, end: number}]
 let highlightRects = []; // divs act as highlights
 let previewRects = [];
+let textOffsets = new Map(); // index for conversions
 
 let cursor = document.createElement("div");
 cursor.className = "cursor";
 document.body.appendChild(cursor);
 
-function getTextNodes() { // filter out all the textNodes
+function buildTextIndex() { // build index for conversions
+  textOffsets.clear();
+
   const walker = document.createTreeWalker(
     document.body, 
     NodeFilter.SHOW_TEXT,
     {
       acceptNode(node) {
-        return node.nodeValue.length ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+        return node.nodeValue.trim().length ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
       }
     }
   ); 
 
-  const nodes = [];
+  let offset = 0;
+  let node;
 
-  while (walker.nextNode()) nodes.push(walker.currentNode);
-
-  return nodes;
-}
-
-
-function getDocumentText() { // rt one large string with all text combined without whitespace (stringed page Text)
-  return getTextNodes().map(n => n.nodeValue).join("");
-}
-
-
-function rangeToOffsets(range) { // convert DOM range into offset in the stringed page Text
-  const nodes = getTextNodes();
-
-  let start = 0;
-  let end = 0;
-
-  let currentChar = 0; // walk over the 
-
-  for (const node of nodes) {
-    // find corresponding start/end node
-    if (node === range.startContainer) {
-      start = currentChar + range.startOffset;
-    }
-
-    if (node === range.endContainer) { 
-      end = currentChar + range.endOffset;
-    }
-    if (start && end) break; // avoid searching after start and end have been found
-    currentChar += node.nodeValue.length;
+  while (node = walker.nextNode()) {
+    textOffsets.set(node, offset);
+    offset += node.nodeValue.length;
   }
+}
+
+
+function rangeToOffsets(range) { // convert DOM range into offset 
+  const start = textOffsets.get(range.startContainer) + range.startOffset;
+  const end = textOffsets.get(range.endContainer) + range.endOffset;
 
   return {start: Math.min(start, end), end: Math.max(start, end)}; // allow selecting backwards
 }
 
-
-function offsetsToRange(start, end) { // converts offset in the stringed page Text to DOM range
-
-  const nodes = getTextNodes();
-
-  let currentChar = 0;
-
-  let startNode = null;
-  let startOffset = 0;
-
-  let endNode = null;
-  let endOffset = 0;
-
-  for (const node of nodes) {
-
-    const next = currentChar + node.nodeValue.length;
-
-    if (!startNode && start >= currentChar && start <= next) {
-      startNode = node;
-      startOffset = start - currentChar;
-    }
-
-    if (!endNode && end >= currentChar && end <= next) {
-      endNode = node;
-      endOffset = end - currentChar;
-    }
-
-    currentChar = next;
-  }
-
-
-  if (!startNode || !endNode) return null;
-
-  const range = document.createRange();
-
-  range.setStart(startNode, startOffset);
-  range.setEnd(endNode, endOffset);
-
-  return range;
-}
-
 function mergeHighlight(newHighlight) { // collapse overlaps into as little highlights as possible
-
   let result = [];
 
   let merged = {...newHighlight};
 
   for (const h of highlights) {
-
-    const overlap = merged.start <= h.end && merged.end >= h.start;
-    const inside = merged.start >= h.start && merged.end <= h.end;
-
-    if (inside) { // ignore new highlights inside existing Highlights
-      return;
+    if (h.end < merged.start || h.start > merged.end) { // skip non-overlapping highlights
+      result.push(h)
+      continue;
     }
 
-    if (overlap) {
-      merged.start = Math.min( merged.start, h.start);
-      merged.end = Math.max( merged.end, h.end);
-    } else {
-      result.push(h);
-    }
+    merged.start = Math.min( merged.start, h.start);
+    merged.end = Math.max( merged.end, h.end);
+   
   }
 
   result.push(merged);
@@ -129,29 +64,48 @@ function mergeHighlight(newHighlight) { // collapse overlaps into as little high
   highlights = result;
 }
 
+function getTextRanges(start, end) {
+  const ranges = [];
+
+  for (const [node, offset] of textOffsets) {
+    const nodeEnd = node.nodeValue.length + offset;
+
+    if (nodeEnd <= start) continue;
+    if (offset >= end) break;
+
+    const range = document.createRange();
+    range.setStart(node, Math.max(0, start - offset));
+    range.setEnd(node, Math.min(node.nodeValue.length, end - offset));
+
+    if (!range.collapsed) ranges.push(range);
+  }
+  console.log(ranges);
+  return ranges;
+}
+
 function clearRects(rects) { // rm all divs
   for (const r of rects) r.remove();
   rects.length = 0;
 }
 
-
 function drawRange(range, storage, highlightidx) { // draw divs
+  const padding = 4;
+
   for (const rect of range.getClientRects()) {
-    console.log(rect, range, range.getClientRects())
     const div = document.createElement("div");
 
     div.className = "highlight";
     div.dataset.index = highlightidx;
 
-    const padding = 4;
 
-    div.style.left = `${rect.left + scrollX - padding}px`;
-    div.style.top = `${rect.top + scrollY}px`;
-    div.style.width = `${rect.width + padding * 2}px`;
-    div.style.height = `${rect.height}px`;
+    div.style.cssText = `
+      left: ${rect.left + scrollX - padding}px;
+      top: ${rect.top + scrollY}px;
+      width: ${rect.width + padding * 2}px;
+      height: ${rect.height}px;
+    ` // avoid 4 seperate css style mutations
 
     document.body.appendChild(div);
-
     storage.push(div);
   }
 }
@@ -160,24 +114,27 @@ function updateHighlights() { // redraw highlights
   clearRects(highlightRects);
 
   highlights.forEach((h, index) => {
-    const range = offsetsToRange( h.start, h.end);
-
-    if (range) drawRange(range, highlightRects, index);
+    const ranges = getTextRanges(h.start, h.end);
+    ranges.forEach(range => drawRange(range, highlightRects, index));
   });
 }
 
 function showPreview() { // show current highlight (before mouselift)
   clearRects(previewRects);
-
+  
   const selection = window.getSelection();
-
+  
   if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return;
-
+  
   const range = selection.getRangeAt(0);
-
+  
   if (!range.toString().trim()) return;
+  
+  const offsets = rangeToOffsets(range);
 
-  drawRange( range, previewRects);
+  const ranges = getTextRanges(offsets.start, offsets.end);
+  ranges.forEach(range => drawRange(range, previewRects));
+ 
 }
 
 function saveHighlight() {
@@ -190,11 +147,11 @@ function saveHighlight() {
   const range = selection.getRangeAt(0);
   if (!range.toString().trim()) return;
 
-  navigator.clipboard.writeText(range.toString().trim());
+  navigator.clipboard.writeText(range.toString().trim()); // copy last highlight
 
   const offsets = rangeToOffsets(range);
 
-  mergeHighlight({start: offsets.start, end: offsets.end});
+  mergeHighlight({start: offsets.start, end: offsets.end}); // collapse highlights
 
   browser.storage.local.set({highlights}).then((result) => {
     console.log(result);
@@ -205,7 +162,7 @@ function saveHighlight() {
 
   updateHighlights();
 
-  console.log(highlights);
+  // console.log(highlights);
 }
 
 // EventListeners
@@ -217,6 +174,10 @@ document.addEventListener("keydown", event => {
 
     if (event.key.toLowerCase() === "x") {
       isHighlighterActive = !isHighlighterActive;
+      if (isHighlighterActive) buildTextIndex();
+      document.documentElement.classList.toggle("highlighter-active", isHighlighterActive);
+      cursor.style.display = isHighlighterActive ? "block" : "none";
+      console.log( "highlighter", isHighlighterActive);
     }
 
     if (event.key === "Escape") {
@@ -224,9 +185,6 @@ document.addEventListener("keydown", event => {
       isHighlighterActive = false;
     }
 
-    document.documentElement.classList.toggle("highlighter-active", isHighlighterActive);
-    cursor.style.display = isHighlighterActive ? "block" : "none";
-    console.log( "highlighter", isHighlighterActive);
     if (!isHighlighterActive) {
         clearRects(highlightRects);
         clearRects(previewRects);
