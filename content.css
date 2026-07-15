@@ -17,14 +17,14 @@
 
 .highlight {
   position: absolute;
-  background: rgba(255, 255, 0, 0.5);
+  /* background: rgba(255, 255, 0, 0.5); */
   color: black;
-  border-radius: 20%;
+  border-radius: 10px;
   /* padding: 0 2px; */
   pointer-events: var(--highlights-selectable, none);
   z-index: 0;
   mix-blend-mode: multiply;
-  /* opacity: 0.5; */
+  opacity: 0.75;
   user-select: none;
 }
 
@@ -35,7 +35,7 @@
   height: 32px;
   width: 32px;
   border-radius: 32px;
-  background-color: rgba(255, 255, 0, 0.5);
+  background-color: #ffff0050;
   transform: translate(-50%, -50%); /* Centers circle to cursor location */
   transform-origin: top left;
   /* overflow: visible; */

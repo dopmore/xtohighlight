@@ -2,8 +2,9 @@ console.log("loaded highlighter");
 
 let isHighlighterActive = false;
 let isHighlighting = false;
+var currentcolor = "#ffff0050";
 
-let highlights = []; // [{start: number, end: number}]
+let highlights = []; // [{start: number, end: number, color, color: currentcolor}]
 let highlightRects = []; // divs act as highlights
 let previewRects = [];
 let textOffsets = new Map(); // index for conversions
@@ -48,14 +49,14 @@ function mergeHighlight(newHighlight) { // collapse overlaps into as little high
   let merged = {...newHighlight};
 
   for (const h of highlights) {
-    if (h.end < merged.start || h.start > merged.end) { // skip non-overlapping highlights
+    if (h.end < merged.start || h.start > merged.end || h.color !== merged.color) { // skip non-overlapping highlights / diff color
       result.push(h)
       continue;
     }
 
     merged.start = Math.min( merged.start, h.start);
     merged.end = Math.max( merged.end, h.end);
-   
+    merged.color = h.color;
   }
 
   result.push(merged);
@@ -82,13 +83,33 @@ function getTextRanges(start, end) {
   console.log(ranges);
   return ranges;
 }
+function getTextRanges(start, end) {
+  const ranges = [];
+
+  for (const [node, offset] of textOffsets) {
+    const nodeEnd = node.nodeValue.length + offset;
+
+    if (nodeEnd <= start) continue;
+    if (offset >= end) break;
+
+    const range = document.createRange();
+    range.setStart(node, Math.max(0, start - offset));
+    range.setEnd(node, Math.min(node.nodeValue.length, end - offset));
+
+    if (!range.collapsed) ranges.push(range);
+  }
+  console.log(ranges);
+  return ranges;
+}
+
+
 
 function clearRects(rects) { // rm all divs
   for (const r of rects) r.remove();
   rects.length = 0;
 }
 
-function drawRange(range, storage, highlightidx) { // draw divs
+function drawRange(range, storage, highlightidx, color) { // draw divs
   const padding = 4;
 
   for (const rect of range.getClientRects()) {
@@ -96,9 +117,9 @@ function drawRange(range, storage, highlightidx) { // draw divs
 
     div.className = "highlight";
     div.dataset.index = highlightidx;
-
-
+    
     div.style.cssText = `
+      background: ${color};
       left: ${rect.left + scrollX - padding}px;
       top: ${rect.top + scrollY}px;
       width: ${rect.width + padding * 2}px;
@@ -115,7 +136,7 @@ function updateHighlights() { // redraw highlights
 
   highlights.forEach((h, index) => {
     const ranges = getTextRanges(h.start, h.end);
-    ranges.forEach(range => drawRange(range, highlightRects, index));
+    ranges.forEach(range => drawRange(range, highlightRects, index, h.color));
   });
 }
 
@@ -133,7 +154,7 @@ function showPreview() { // show current highlight (before mouselift)
   const offsets = rangeToOffsets(range);
 
   const ranges = getTextRanges(offsets.start, offsets.end);
-  ranges.forEach(range => drawRange(range, previewRects));
+  ranges.forEach(range => drawRange(range, previewRects, -1, currentcolor));
  
 }
 
@@ -151,7 +172,7 @@ function saveHighlight() {
 
   const offsets = rangeToOffsets(range);
 
-  mergeHighlight({start: offsets.start, end: offsets.end}); // collapse highlights
+  mergeHighlight({start: offsets.start, end: offsets.end, color: currentcolor}); // collapse highlights
 
   browser.storage.local.set({highlights}).then((result) => {
     console.log(result);
@@ -171,6 +192,19 @@ document.addEventListener("keydown", event => {
     if (event.target.isContentEditable ||
         event.target.tagName === "INPUT" ||
         event.target.tagName === "TEXTAREA") return;
+
+    if (event.key.toLowerCase() === "y") {
+      currentcolor = "#ffff0050";
+      cursor.style.background = "#ffff0050";
+    }
+    if (event.key.toLowerCase() === "r") {
+      currentcolor = "#ff000050";
+      cursor.style.background = "#ff000050";
+    }
+    if (event.key.toLowerCase() === "b") {
+      currentcolor = "#0000ff50";
+      cursor.style.background = "#0000ff50";
+    }
 
     if (event.key.toLowerCase() === "x") {
       isHighlighterActive = !isHighlighterActive;
