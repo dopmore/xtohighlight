@@ -1,7 +1,6 @@
 console.log("loaded highlighter");
 
 let isHighlighterActive = false;
-let isHighlighting = false;
 var currentcolor = "#ffff0050";
 
 let highlights = []; // [{start: number, end: number, color, color: currentcolor}]
@@ -35,36 +34,69 @@ function buildTextIndex() { // build index for conversions
   }
 }
 
-
-function rangeToOffsets(range) { // convert DOM range into offset 
-  const start = textOffsets.get(range.startContainer) + range.startOffset;
-  const end = textOffsets.get(range.endContainer) + range.endOffset;
-
-  return {start: Math.min(start, end), end: Math.max(start, end)}; // allow selecting backwards
-}
-
 function mergeHighlight(newHighlight) { // collapse overlaps into as little highlights as possible
   let result = [];
-
+  
   let merged = {...newHighlight};
-
+  
   for (const h of highlights) {
     if (h.end < merged.start || h.start > merged.end || h.color !== merged.color) { // skip non-overlapping highlights / diff color
       result.push(h)
       continue;
     }
-
+    
     merged.start = Math.min( merged.start, h.start);
     merged.end = Math.max( merged.end, h.end);
     merged.color = h.color;
   }
-
+  
   result.push(merged);
   result.sort((a, b) => a.start - b.start);
-
+  
   highlights = result;
 }
 
+function rangeToOffsets(range) { // convert DOM range into offset 
+  let start = textOffsets.get(range.startContainer) + range.startOffset;
+  let end = textOffsets.get(range.endContainer) + range.endOffset;
+  if (isNaN(start) || isNaN(end)) {
+    return null;
+  }
+  return {start: Math.min(start, end), end: Math.max(start, end)}; // allow selecting backwards
+}
+
+// function offsetToRange(start, end) {
+//   const range = document.createRange();
+
+//   let startNode = null;
+//   let endNode = null;
+//   let startOffset = 0;
+//   let endOffset = 0;
+
+//   for (const [node, offset] of textOffsets) {
+//     const nodeEnd = node.nodeValue.length + offset;
+
+//     if (startNode === null && start >= offset && start <= nodeEnd) {
+//       startNode = node;
+//       startOffset = start - offset
+//     }
+
+//     if (end >= offset && end <= nodeEnd) {
+//       endNode = node;
+//       endOffset = end - offset;
+//       break;
+//     }
+//   }
+
+//   if (!startNode||!endNode) return null;
+
+//   range.setStart(startNode, startOffset);
+//   range.setEnd(endNode, endOffset);
+
+//   console.log(range);
+//   return range;
+// }
+
 function getTextRanges(start, end) {
   const ranges = [];
 
@@ -77,44 +109,43 @@ function getTextRanges(start, end) {
     const range = document.createRange();
     range.setStart(node, Math.max(0, start - offset));
     range.setEnd(node, Math.min(node.nodeValue.length, end - offset));
-
+    // console.log(range);
     if (!range.collapsed) ranges.push(range);
   }
-  console.log(ranges);
   return ranges;
 }
-function getTextRanges(start, end) {
-  const ranges = [];
-
-  for (const [node, offset] of textOffsets) {
-    const nodeEnd = node.nodeValue.length + offset;
-
-    if (nodeEnd <= start) continue;
-    if (offset >= end) break;
-
-    const range = document.createRange();
-    range.setStart(node, Math.max(0, start - offset));
-    range.setEnd(node, Math.min(node.nodeValue.length, end - offset));
-
-    if (!range.collapsed) ranges.push(range);
-  }
-  console.log(ranges);
-  return ranges;
-}
-
-
 
 function clearRects(rects) { // rm all divs
   for (const r of rects) r.remove();
   rects.length = 0;
 }
 
-function drawRange(range, storage, highlightidx, color) { // draw divs
-  const padding = 4;
+function drawRanges(ranges, storage, highlightidx, color) { // draw divs
+  const padding = 0;
+  
+  const rects = [];
+  for (const range of ranges) {
+    if (range===null) return;
+    rects.push(...range.getClientRects());
+  };
 
-  for (const rect of range.getClientRects()) {
+  console.log(rects);
+  const mergedRects = []; // merge Rects on the same line (else links, bold etc. get their own highlight)
+  for (const rect of rects) {
+    const line = rects.filter(r => r.top===rect.top);
+    const merged = {
+      left: Math.min(...line.map(r=>r.left)),
+      right: Math.max(...line.map(r=>r.right)),
+      top: rect.top,
+      height: Math.max(...line.map(r=>r.height))
+    }
+    if (!mergedRects.some(r => r.top === merged.top)) mergedRects.push(merged);
+    console.log(line, mergedRects);
+  }
+
+  for (const rect of mergedRects) {
     const div = document.createElement("div");
-
+    console.log(div);
     div.className = "highlight";
     div.dataset.index = highlightidx;
     
@@ -122,7 +153,7 @@ function drawRange(range, storage, highlightidx, color) { // draw divs
       background: ${color};
       left: ${rect.left + scrollX - padding}px;
       top: ${rect.top + scrollY}px;
-      width: ${rect.width + padding * 2}px;
+      width: ${rect.right - rect.left + padding * 2}px;
       height: ${rect.height}px;
     ` // avoid 4 seperate css style mutations
 
@@ -136,7 +167,7 @@ function updateHighlights() { // redraw highlights
 
   highlights.forEach((h, index) => {
     const ranges = getTextRanges(h.start, h.end);
-    ranges.forEach(range => drawRange(range, highlightRects, index, h.color));
+    drawRanges(ranges, highlightRects, index, h.color);
   });
 }
 
@@ -147,15 +178,19 @@ function showPreview() { // show current highlight (before mouselift)
   
   if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return;
   
-  const range = selection.getRangeAt(0);
+  const selRange = selection.getRangeAt(0);
   
-  if (!range.toString().trim()) return;
+  if (!selRange.toString().trim()) return;
   
-  const offsets = rangeToOffsets(range);
+  const offsets = rangeToOffsets(selRange);
+
+  if(!offsets) {
+    selection.removeAllRanges();
+    return;
+  }
 
   const ranges = getTextRanges(offsets.start, offsets.end);
-  ranges.forEach(range => drawRange(range, previewRects, -1, currentcolor));
- 
+  drawRanges(ranges, previewRects, -1, currentcolor); 
 }
 
 function saveHighlight() {
@@ -163,7 +198,7 @@ function saveHighlight() {
   
   const selection = window.getSelection();
   
-  if (!selection || selection.rangeCount === 0 || selection.isCollapsed)return;
+  if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return;
   
   const range = selection.getRangeAt(0);
   if (!range.toString().trim()) return;
@@ -171,6 +206,11 @@ function saveHighlight() {
   navigator.clipboard.writeText(range.toString().trim()); // copy last highlight
 
   const offsets = rangeToOffsets(range);
+
+  if (!offsets) {
+    selection.removeAllRanges();
+    return
+  }
 
   mergeHighlight({start: offsets.start, end: offsets.end, color: currentcolor}); // collapse highlights
 
@@ -234,7 +274,7 @@ document.addEventListener("mousemove", event => {
   if (!element) return;
   
   cursor.classList.toggle("delete-icon", event.target.classList.contains("highlight"));
-  
+
   const fs = parseFloat(getComputedStyle(element).fontSize) || 16;
   const h = Math.max(14, fs * 1.2);
   const w = Math.max(10, fs * 0.7);
@@ -248,7 +288,6 @@ document.addEventListener("mousemove", event => {
 document.addEventListener("mouseup", () => {
   if (!isHighlighterActive) return;
   saveHighlight();
-  isHighlighting = false;
   document.documentElement.style.setProperty("--highlights-selectable", "auto")
 });
 
@@ -260,7 +299,6 @@ document.addEventListener("mousedown", event => {
     updateHighlights()
   }
 
-  isHighlighting = true;
   document.documentElement.style.setProperty("--highlights-selectable", "none");
 });
 

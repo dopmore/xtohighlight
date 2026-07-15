@@ -23,7 +23,7 @@
   /* padding: 0 2px; */
   pointer-events: var(--highlights-selectable, none);
   z-index: 0;
-  mix-blend-mode: multiply;
+  /* mix-blend-mode: multiply; */
   opacity: 0.75;
   user-select: none;
 }
