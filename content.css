@@ -41,13 +41,23 @@
   /* overflow: visible; */
 }
 
-.cursor.delete-icon::after {
+.cursor.action-icons::before {
+  content: "";
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  width: 8px;
+  height: 8px;
+  background-image: url("images/delete.png");
+  z-index: 0;
+}
+.cursor.action-icons::after {
   content: "";
   position: absolute;
   top: -8px;
   right: -8px;
   width: 8px;
   height: 8px;
-  background-image: url("images/delete.png");
-  z-index: 999999;
+  background-image: url("images/copy.png");
+  z-index: 0;
 }

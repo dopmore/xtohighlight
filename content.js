@@ -20,7 +20,7 @@ function buildTextIndex() { // build index for conversions
     NodeFilter.SHOW_TEXT,
     {
       acceptNode(node) {
-        return node.nodeValue.trim().length ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+        return node.nodeValue.length ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
       }
     }
   ); 
@@ -65,37 +65,37 @@ function rangeToOffsets(range) { // convert DOM range into offset
   return {start: Math.min(start, end), end: Math.max(start, end)}; // allow selecting backwards
 }
 
-// function offsetToRange(start, end) {
-//   const range = document.createRange();
+function offsetToRange(start, end) {
+  const range = document.createRange();
 
-//   let startNode = null;
-//   let endNode = null;
-//   let startOffset = 0;
-//   let endOffset = 0;
+  let startNode = null;
+  let endNode = null;
+  let startOffset = 0;
+  let endOffset = 0;
 
-//   for (const [node, offset] of textOffsets) {
-//     const nodeEnd = node.nodeValue.length + offset;
+  for (const [node, offset] of textOffsets) {
+    const nodeEnd = node.nodeValue.length + offset;
 
-//     if (startNode === null && start >= offset && start <= nodeEnd) {
-//       startNode = node;
-//       startOffset = start - offset
-//     }
+    if (startNode === null && start >= offset && start <= nodeEnd) {
+      startNode = node;
+      startOffset = start - offset
+    }
 
-//     if (end >= offset && end <= nodeEnd) {
-//       endNode = node;
-//       endOffset = end - offset;
-//       break;
-//     }
-//   }
+    if (end >= offset && end <= nodeEnd) {
+      endNode = node;
+      endOffset = end - offset;
+      break;
+    }
+  }
 
-//   if (!startNode||!endNode) return null;
+  if (!startNode||!endNode) return null;
 
-//   range.setStart(startNode, startOffset);
-//   range.setEnd(endNode, endOffset);
+  range.setStart(startNode, startOffset);
+  range.setEnd(endNode, endOffset);
 
-//   console.log(range);
-//   return range;
-// }
+  console.log(range);
+  return range;
+}
 
 function getTextRanges(start, end) {
   const ranges = [];
@@ -121,7 +121,7 @@ function clearRects(rects) { // rm all divs
 }
 
 function drawRanges(ranges, storage, highlightidx, color) { // draw divs
-  const padding = 0;
+  const padding = 2;
   
   const rects = [];
   for (const range of ranges) {
@@ -273,7 +273,8 @@ document.addEventListener("mousemove", event => {
   const element = document.elementFromPoint(event.clientX, event.clientY);
   if (!element) return;
   
-  cursor.classList.toggle("delete-icon", event.target.classList.contains("highlight"));
+  cursor.classList.toggle("action-icons", event.target.classList.contains("highlight") && highlights[Number(event.target.dataset.index)].color===currentcolor); // adds copy / delete icon to indicate that actions are possible
+  
 
   const fs = parseFloat(getComputedStyle(element).fontSize) || 16;
   const h = Math.max(14, fs * 1.2);
@@ -293,13 +294,24 @@ document.addEventListener("mouseup", () => {
 
 document.addEventListener("mousedown", event => {
   if (!isHighlighterActive) return;
-  
-  if (event.target.classList.contains("highlight")) {
+  if (event.button !== 0) return;
+  if (event.target.classList.contains("highlight") && highlights[Number(event.target.dataset.index)].color===currentcolor) {
     highlights.splice(Number(event.target.dataset.index), 1)
     updateHighlights()
   }
 
   document.documentElement.style.setProperty("--highlights-selectable", "none");
+});
+
+document.addEventListener("contextmenu", event => {
+  if (!event.target.classList.contains("highlight")) return;
+
+  event.preventDefault();
+
+  const h = highlights[Number(event.target.dataset.index)];
+  const range = offsetToRange(h.start, h.end);
+  if (range) navigator.clipboard.writeText(range.toString());
+
 });
 
 document.addEventListener("selectionchange", () => {
