@@ -268,12 +268,31 @@ document.addEventListener("keydown", event => {
     }
 });
 
+function getHighlightFromPoint(x, y) {
+  const rect = highlightRects.find(div => {
+    const r = div.getBoundingClientRect();
+
+    if (highlights[Number(div.dataset.index)].color !== currentcolor) return false;
+    // skip other non currentcolor highlights
+
+    return (
+      x >= r.left + scrollX &&
+      x <= r.right + scrollX &&
+      y >= r.top + scrollY &&
+      y <= r.bottom + scrollY
+    )
+  });
+  return rect ? highlights[Number(rect.dataset.index)] : null
+}
+
 document.addEventListener("mousemove", event => {
   if (!isHighlighterActive) return;
   const element = document.elementFromPoint(event.clientX, event.clientY);
   if (!element) return;
   
-  cursor.classList.toggle("action-icons", event.target.classList.contains("highlight") && highlights[Number(event.target.dataset.index)].color===currentcolor); // adds copy / delete icon to indicate that actions are possible
+  const highlight = getHighlightFromPoint(event.clientX + scrollX, event.clientY + scrollY);
+
+  cursor.classList.toggle("action-icons", highlight && highlight.color===currentcolor); // adds copy / delete icon to indicate that actions are possible
   
 
   const fs = parseFloat(getComputedStyle(element).fontSize) || 16;
@@ -289,18 +308,16 @@ document.addEventListener("mousemove", event => {
 document.addEventListener("mouseup", () => {
   if (!isHighlighterActive) return;
   saveHighlight();
-  document.documentElement.style.setProperty("--highlights-selectable", "auto")
 });
 
 document.addEventListener("mousedown", event => {
   if (!isHighlighterActive) return;
   if (event.button !== 0) return;
-  if (event.target.classList.contains("highlight") && highlights[Number(event.target.dataset.index)].color===currentcolor) {
-    highlights.splice(Number(event.target.dataset.index), 1)
+  const highlight = getHighlightFromPoint(event.clientX + scrollX, event.clientY + scrollY);
+  if (highlight && highlight.color === currentcolor) {
+    highlights.splice(highlights.indexOf(highlight), 1)
     updateHighlights()
   }
-
-  document.documentElement.style.setProperty("--highlights-selectable", "none");
 });
 
 document.addEventListener("contextmenu", event => {
