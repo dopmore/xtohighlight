@@ -1,8 +1,21 @@
-console.log("loaded highlighter");
 const STORAGE_KEY = `highlights${location.origin}${location.pathname}`;
 
 const state = {
   active: false,
+  
+  config: {
+    shortcuts: {
+      colors: { // eyboard shortcuts for colors
+        y: "#ffff0050",
+        r: "#ff000050",
+        b: "#0000ff50"
+      },
+      toggle: "x",
+      copyAll: "c",
+      deleteAll: "d"
+    }
+  },
+  
   color: "#ffff0050",
   
   highlights: [],
@@ -15,17 +28,19 @@ const state = {
   textOffsets: new Map() // index for conversions
 };
 
-const COLORS = { // eyboard shortcuts for colors
-  y: "#ffff0050",
-  r: "#ff000050",
-  b: "#0000ff50"
-};
 
 const cursor = document.createElement("div");
 cursor.className = "cursor";
 document.body.appendChild(cursor);
 
-loadHighlights(); // try loading saved highlights on page-basis
+function init() {
+  loadHighlights(); // try loading saved highlights on page-basis
+  loadSettings();
+  
+  state.color = Object.values(state.config.shortcuts.colors)[0];
+  buildTextIndex();
+  console.log("loaded highlighter");
+}
 
 function buildTextIndex() { // build index for conversions
   state.textOffsets.clear();
@@ -144,8 +159,69 @@ function saveHighlights() {
 
 async function loadHighlights() {
   const result = await browser.storage.local.get(STORAGE_KEY);
+  
+  if (result[STORAGE_KEY]) state.highlights = result[STORAGE_KEY];
+}
 
-  state.highlights = result[STORAGE_KEY] || [];
+function saveHighlight() {
+  clearRects(state.rects.previewRects);
+  
+  const selection = window.getSelection();
+  
+  if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return;
+  
+  const range = selection.getRangeAt(0);
+  if (!range.toString().trim()) return;
+
+  navigator.clipboard.writeText(range.toString().trim()); // copy last highlight
+
+  const offsets = rangeToOffsets(range);
+
+  if (!offsets) {
+    selection.removeAllRanges();
+    return
+  }
+
+  mergeHighlight({start: offsets.start, end: offsets.end, color: state.color}); // collapse highlights
+
+  saveHighlights();
+
+  selection.removeAllRanges();
+
+  updateHighlightRects();
+}
+
+function getHighlightFromPoint(x, y) {
+  const rect = state.rects.highlightRects.find(div => {
+    const r = div.getBoundingClientRect();
+
+    if (state.highlights[Number(div.dataset.index)].color !== state.color) return false;
+    // skip other non currentcolor highlights
+
+    return (
+      x >= r.left + scrollX &&
+      x <= r.right + scrollX &&
+      y >= r.top + scrollY &&
+      y <= r.bottom + scrollY
+    )
+  });
+  return rect ? state.highlights[Number(rect.dataset.index)] : null
+}
+
+function copyHighlightTexts(color = null) {
+  const highlights = color ? 
+  state.highlights.filter(h => h.color === color) : state.highlights;
+
+  const text = highlights.map(h => offsetToRange(h.start, h.end)?.toString().trim()).join("\n");
+
+  navigator.clipboard.writeText(text);
+}
+
+function deleteAllHighlights() {
+  state.highlights = [];
+  saveHighlights();
+  clearRects(state.rects.highlightRects);
+  clearRects(state.rects.previewRects);
 }
 
 // Rect-logic, drawing highlights
@@ -238,59 +314,18 @@ function showPreview() { // show current highlight (before mouselift)
   drawRanges(ranges, state.rects.previewRects, -1, state.color); 
 }
 
-function saveHighlight() {
-  clearRects(state.rects.previewRects);
-  
-  const selection = window.getSelection();
-  
-  if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return;
-  
-  const range = selection.getRangeAt(0);
-  if (!range.toString().trim()) return;
+// save/load settings
 
-  navigator.clipboard.writeText(range.toString().trim()); // copy last highlight
+async function loadSettings() {
+  const result = await browser.storage.sync.get("highlighter-settings");
 
-  const offsets = rangeToOffsets(range);
-
-  if (!offsets) {
-    selection.removeAllRanges();
-    return
-  }
-
-  mergeHighlight({start: offsets.start, end: offsets.end, color: state.color}); // collapse highlights
-
-  saveHighlights();
-
-  selection.removeAllRanges();
-
-  updateHighlightRects();
+  if (result["highlighter-settings"]) state.settings = result["highlighter-settings"];
 }
 
-function getHighlightFromPoint(x, y) {
-  const rect = state.rects.highlightRects.find(div => {
-    const r = div.getBoundingClientRect();
-
-    if (state.highlights[Number(div.dataset.index)].color !== state.color) return false;
-    // skip other non currentcolor highlights
-
-    return (
-      x >= r.left + scrollX &&
-      x <= r.right + scrollX &&
-      y >= r.top + scrollY &&
-      y <= r.bottom + scrollY
-    )
-  });
-  return rect ? state.highlights[Number(rect.dataset.index)] : null
+function saveSettings() {
+  browser.storage.sync.set({["highlighter-settings"]: state.settings});
 }
 
-function copyHighlightTexts(color = null) {
-  const highlights = color ? 
-  state.highlights.filter(h => h.color === color) : state.highlights;
-
-  const text = highlights.map(h => offsetToRange(h.start, h.end)?.toString().trim()).join("\n");
-
-  navigator.clipboard.writeText(text);
-}
 
 // EventListeners
 document.addEventListener("keydown", event => {
@@ -299,31 +334,38 @@ document.addEventListener("keydown", event => {
       event.target.tagName === "TEXTAREA") return;
 
   const key = event.key.toLocaleLowerCase()
+  const colors = state.config.shortcuts.colors;
 
-  if (COLORS[key]){
-    if (state.color === COLORS[key]) {
+  if (colors[key]){
+    if (state.color === colors[key]) {
       copyHighlightTexts(state.color);
       return;
     }
 
-    state.color = COLORS[key];
-    cursor.style.background = COLORS[key];
+    state.color = colors[key];
+    cursor.style.background = colors[key];
   } 
 
   switch (event.key.toLocaleLowerCase()) {
-    case "x":
+    case state.config.shortcuts.toggle:
       state.active = !state.active;
       console.log("highlighter", state.active);
     break;
-      
+
+    case state.config.shortcuts.copyAll:
+      copyHighlightTexts();
+    break;
+
+    case state.config.shortcuts.deleteAll:
+      if (confirm("Delete all Highlights?")) deleteAllHighlights();
+    break;
+
     case "Escape":
       if (!state.active) return;
       state.active = false;
     break;
+
   
-    case "c":
-      copyHighlightTexts();
-    break;
   }
       
   if (!state.active) {
@@ -402,3 +444,5 @@ document.addEventListener("focus", () => {if (state.active) cursor.style.display
 document.addEventListener("mouseover", () => {if (state.active) cursor.style.display = "block";});
 document.addEventListener("blur", () => {cursor.style.display = "none";});
 window.addEventListener("mouseout", event => {if (!event.relatedTarget) cursor.style.display = "none";});
+
+init();
