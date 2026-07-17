@@ -345,7 +345,7 @@ function createToolbar() {
     <button data-action="add-color"> + </button>
     <button data-action="copyAll"> c </button>
     <button data-action="deleteAll"> d </button>
-    <button class="logo" data-action="collapse"> - </button>
+    <button class="logo" data-action="collapse"></button>
   `;
 
   document.body.appendChild(state.toolbar);
@@ -412,7 +412,7 @@ function addColor() {
       return;
     }
 
-    state.config.colors[shortcut.toLowerCase()] = colorPicker.value + "50";
+    state.config.shortcuts.colors[shortcut.toLowerCase()] = colorPicker.value + "50";
    
     saveSettings();
     renderColors();

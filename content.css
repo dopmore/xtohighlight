@@ -75,7 +75,7 @@
   flex-direction: column;
   align-items: center;
   padding-top: 10px;
-  padding-bottom: 5px;
+  padding-bottom: 10px;
   gap: 5px;
   width: 50px;
   background: seashell;/* idk */
@@ -132,9 +132,13 @@
 }
 
 #highlighter-toolbar.collapsed {
-  width: 50px;
-  height: 50px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
+  padding: 0;
+  gap: 0;
+  justify-content: center;
+  align-items: center;
 }
 
 #highlighter-toolbar.collapsed .colors,
@@ -143,7 +147,8 @@
 }
 
 #highlighter-toolbar .logo {
-  background-color: beige;
-  font-size: 20px;
-  font-weight: bold;
+  background-image: url(images/icon-48.png);
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
 }
