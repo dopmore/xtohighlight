@@ -418,12 +418,11 @@ document.addEventListener("mousedown", event => {
 });
 
 document.addEventListener("contextmenu", event => {
-  if (!event.target.classList.contains("highlight")) return;
-
+  if (!state.active) return;
   event.preventDefault();
-
-  const h = state.highlights[Number(event.target.dataset.index)];
-  const range = offsetToRange(h.start, h.end);
+  
+  const highlight = getHighlightFromPoint(event.clientX + scrollX, event.clientY + scrollY);
+  const range = offsetToRange(highlight.start, highlight.end);
 
   if (range) navigator.clipboard.writeText(range.toString());
 });
