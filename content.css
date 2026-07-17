@@ -15,6 +15,12 @@
     pointer-events: none !important;
 }
 
+.highlighter-active #highlighter-toolbar,
+.highlighter-active #highlighter-toolbar * {
+  pointer-events: auto !important;
+  cursor:pointer !important;
+}
+
 .highlight {
   position: absolute;
   color: black;
@@ -56,4 +62,88 @@
   height: 8px;
   background-image: url("images/copy.png");
   z-index: 0;
+}
+
+#highlighter-toolbar {
+  position: fixed;
+
+  top: 20px;
+  right: 20px;
+  border: 2px solid black;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 10px;
+  padding-bottom: 5px;
+  gap: 5px;
+  width: 50px;
+  background: seashell;/* idk */
+  border-radius: 25px;
+  z-index: 999999;
+
+  user-select: none;
+  cursor: grab;
+  backdrop-filter: blur(8px);
+}
+
+#highlighter-toolbar:active {
+  cursor:grabbing
+}
+
+#highlighter-toolbar.hidden {
+  display: none;
+}
+
+#highlighter-toolbar button {
+  width: 35px;
+  height: 35px;
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  background: lightblue;
+  color: white;
+  transition: transform 0.15s ease;
+}
+
+#highlighter-toolbar button:hover {
+  transition: scale(1.1);
+}
+
+#highlighter-toolbar .colors {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#highlighter-toolbar .color-button {
+  color: black;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+#highlighter-toolbar [data-action="add-color"] {
+  font-size: 24px;
+  line-height: 1;
+}
+
+#highlighter-toolbar.collapsed {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+}
+
+#highlighter-toolbar.collapsed .colors,
+#highlighter-toolbar.collapsed button:not(.logo) {
+  display: none;
+}
+
+#highlighter-toolbar .logo {
+  background-color: beige;
+  font-size: 20px;
+  font-weight: bold;
 }

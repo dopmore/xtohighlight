@@ -25,7 +25,8 @@ const state = {
     previewRects: []
   },
   
-  textOffsets: new Map() // index for conversions
+  textOffsets: new Map(), // index for conversions\
+  toolbar: null
 };
 
 
@@ -36,6 +37,7 @@ document.body.appendChild(cursor);
 function init() {
   loadHighlights(); // try loading saved highlights on page-basis
   loadSettings();
+  createToolbar();
   
   state.color = Object.values(state.config.shortcuts.colors)[0];
   buildTextIndex();
@@ -319,11 +321,134 @@ function showPreview() { // show current highlight (before mouselift)
 async function loadSettings() {
   const result = await browser.storage.sync.get("highlighter-settings");
 
-  if (result["highlighter-settings"]) state.settings = result["highlighter-settings"];
+  if (result["highlighter-settings"]) state.config = result["highlighter-settings"];
 }
 
 function saveSettings() {
-  browser.storage.sync.set({["highlighter-settings"]: state.settings});
+  browser.storage.sync.set({["highlighter-settings"]: state.config});
+}
+
+// toolbar
+
+function createToolbar() {
+  let dragging = false;
+  let startX;
+  let startY;
+  let startLeft;
+  let startTop;
+
+  state.toolbar = document.createElement("div")
+  state.toolbar.id = "highlighter-toolbar";
+  state.toolbar.classList.add("hidden");
+  state.toolbar.innerHTML = `
+    <div class="colors"></div>
+    <button data-action="add-color"> + </button>
+    <button data-action="copyAll"> c </button>
+    <button data-action="deleteAll"> d </button>
+    <button class="logo" data-action="collapse"> - </button>
+  `;
+
+  document.body.appendChild(state.toolbar);
+
+  state.toolbar.querySelector(".colors").innerHTML = "";
+
+  renderColors(); // colors can change
+  
+  state.toolbar.addEventListener("click", toolbarAction);
+
+  state.toolbar.addEventListener("pointerdown", event => {
+    if (event.target.tagName === "BUTTON") return;
+      dragging = true;
+
+      const rect = state.toolbar.getBoundingClientRect();
+
+      startX = event.clientX;
+      startY = event.clientY;
+
+      startLeft = rect.left;
+      startTop = rect.top;
+
+      state.toolbar.setPointerCapture(event.pointerId);
+  });
+
+  state.toolbar.addEventListener("pointermove", event => {
+    if (!dragging) return;
+    state.toolbar.style.right = "auto";
+    state.toolbar.style.transform = "none";
+    state.toolbar.style.left = `${startLeft + event.clientX - startX}px`
+    state.toolbar.style.top = `${startTop+ event.clientY - startY}px`
+  });
+
+  state.toolbar.addEventListener("pointerup", event => {
+    dragging = false;
+  });
+}
+
+function renderColors() {
+  state.toolbar.querySelector(".colors").innerHTML = "";
+  Object.entries(state.config.shortcuts.colors).forEach(([shortcut, color]) => {
+    const button = document.createElement("button");
+  
+    button.className = "color-button";
+    button.dataset.color = color;
+    button.style.background = color;
+
+    button.dataset.shortcut = shortcut;
+    button.textContent = shortcut.toUpperCase();
+  
+    state.toolbar.querySelector(".colors").appendChild(button);
+  });
+}
+
+function addColor() {
+  const colorPicker = document.createElement("input");
+  colorPicker.type = "color";
+
+  colorPicker.onchange = () => {
+    const shortcut = prompt("Shortcut-key: ")
+    if (!shortcut) return;
+    if (state.config.shortcuts.colors[shortcut]) {
+      alert("Shortcut already exists");
+      return;
+    }
+
+    state.config.colors[shortcut.toLowerCase()] = colorPicker.value + "50";
+   
+    saveSettings();
+    renderColors();
+  }
+
+  colorPicker.click();
+}
+
+function toolbarAction(event) {
+  const button = event.target.closest("button");
+  if (!button) return;
+  const action = button.dataset.action;
+
+  if (event.target.classList.contains("color-button")) {
+    state.color = event.target.dataset.color;
+    cursor.style.background = state.color;
+    return;
+  }
+
+  switch (action) {
+    case "collapse":
+      state.toolbar.classList.toggle("collapsed");
+    break;
+
+    case "add-color":
+      addColor();
+    break;
+
+    case "copyAll":
+      copyHighlightTexts();
+    break;
+
+    case "deleteAll":
+      deleteAllHighlights();
+    break;
+  }
 }
 
 
@@ -378,6 +503,7 @@ document.addEventListener("keydown", event => {
   }
 
   document.documentElement.classList.toggle("highlighter-active", state.active);
+  state.toolbar.classList.toggle("hidden", !state.active);
   cursor.style.display = state.active ? "block" : "none";
 });
 
