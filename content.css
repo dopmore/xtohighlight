@@ -69,17 +69,16 @@
 
   top: 20px;
   right: 20px;
-  border: 2px solid black;
 
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-top: 10px;
-  padding-bottom: 10px;
+  padding: 10px 0;
   gap: 5px;
+  
   width: 50px;
-  background: seashell;/* idk */
-  border-radius: 25px;
+  background: white;/* idk */
+  border-radius: 15px;
   z-index: 999999;
 
   user-select: none;
@@ -87,7 +86,7 @@
   backdrop-filter: blur(8px);
 }
 
-#highlighter-toolbar:active {
+#highlighter-toolbar .logo:active {
   cursor:grabbing
 }
 
@@ -95,9 +94,9 @@
   display: none;
 }
 
-#highlighter-toolbar button {
-  width: 35px;
-  height: 35px;
+#highlighter-toolbar button:not(.logo) {
+  width: 32px;
+  height: 32px;
   border: none;
   border-radius: 50%;
   display: flex;
@@ -105,35 +104,27 @@
   justify-content: center;
   cursor: pointer;
   font-size: 16px;
-  background: lightblue;
-  color: white;
-  transition: transform 0.15s ease;
-}
-
-#highlighter-toolbar button:hover {
-  transition: scale(1.1);
+  font-weight: bolder;
+  background: transparent;
+  color: black;
 }
 
 #highlighter-toolbar .colors {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 5px;
 }
 
 #highlighter-toolbar .color-button {
   color: black;
   font-size: 12px;
-  font-weight: bold;
-}
-
-#highlighter-toolbar [data-action="add-color"] {
-  font-size: 24px;
-  line-height: 1;
+  width: 100%;
+  font-weight: bolder;
 }
 
 #highlighter-toolbar.collapsed {
-  width: 48px;
-  height: 48px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   padding: 0;
   gap: 0;
@@ -147,8 +138,12 @@
 }
 
 #highlighter-toolbar .logo {
-  background-image: url(images/icon-48.png);
-  background-size: contain;
+  width: 32px;
+  height: 32px;
+  border: none;
+  cursor: grab;
+  background-image: url(images/icon-32.png);
   background-position: center;
   background-repeat: no-repeat;
+  background-size: cover;
 }

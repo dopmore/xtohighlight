@@ -341,11 +341,12 @@ function createToolbar() {
   state.toolbar.id = "highlighter-toolbar";
   state.toolbar.classList.add("hidden");
   state.toolbar.innerHTML = `
+    <button class="logo" data-action="logo"></button>
     <div class="colors"></div>
     <button data-action="add-color"> + </button>
     <button data-action="copyAll"> c </button>
     <button data-action="deleteAll"> d </button>
-    <button class="logo" data-action="collapse"></button>
+    <button data-action="collapse"> ^ </button>
   `;
 
   document.body.appendChild(state.toolbar);
@@ -354,33 +355,81 @@ function createToolbar() {
 
   renderColors(); // colors can change
   
-  state.toolbar.addEventListener("click", toolbarAction);
+  state.toolbar.addEventListener("click", event => {
+    const button = event.target.closest("button");
+    if (!button) return;
+    const action = button.dataset.action;
 
-  state.toolbar.addEventListener("pointerdown", event => {
-    if (event.target.tagName === "BUTTON") return;
+    if (event.target.classList.contains("color-button")) {
+      state.color = event.target.dataset.color;
+      cursor.style.background = state.color;
+      return;
+    }
+
+    switch (action) {
+      case "collapse":
+        state.toolbar.classList.toggle("collapsed");
+      break;
+
+      case "logo":
+        if (!moved) state.toolbar.classList.toggle("collapsed");
+      break;
+
+      case "add-color":
+        addColor();
+      break;
+
+      case "copyAll":
+        copyHighlightTexts();
+      break;
+
+      case "deleteAll":
+        deleteAllHighlights();
+      break;
+    }
+  });
+
+  const logo = state.toolbar.querySelector(".logo");
+
+  let moved = false;
+
+  logo.addEventListener("pointerdown", event => {
       dragging = true;
+      moved = false;
+
+      const rect = state.toolbar.getBoundingClientRect();
+      
+      startX = event.clientX;
+      startY = event.clientY;
+      
+      startLeft = rect.left;
+      startTop = rect.top;
+      
+      logo.setPointerCapture(event.pointerId);
+    });
+    
+    logo.addEventListener("pointermove", event => {
+      if (!dragging) return;
+      
+      const dx = event.clientX - startX;
+      const dy = event.clientY - startY;
+      
+      moved = Math.abs(dx) > 1 || Math.abs(dy) > 1;
 
       const rect = state.toolbar.getBoundingClientRect();
 
-      startX = event.clientX;
-      startY = event.clientY;
+      const newLeft = Math.max(0, Math.min(startLeft + dx, window.innerWidth - rect.width));
+      const newTop = Math.max(0, Math.min(startTop + dy, window.innerHeight - rect.height));
 
-      startLeft = rect.left;
-      startTop = rect.top;
-
-      state.toolbar.setPointerCapture(event.pointerId);
+      state.toolbar.style.right = "auto";
+      state.toolbar.style.transform = "none";
+      state.toolbar.style.left = `${newLeft}px`
+      state.toolbar.style.top = `${newTop}px`
   });
 
-  state.toolbar.addEventListener("pointermove", event => {
-    if (!dragging) return;
-    state.toolbar.style.right = "auto";
-    state.toolbar.style.transform = "none";
-    state.toolbar.style.left = `${startLeft + event.clientX - startX}px`
-    state.toolbar.style.top = `${startTop+ event.clientY - startY}px`
-  });
-
-  state.toolbar.addEventListener("pointerup", event => {
+  logo.addEventListener("pointerup", event => {
     dragging = false;
+    logo.releasePointerCapture(event.pointerId);
   });
 }
 
@@ -419,36 +468,6 @@ function addColor() {
   }
 
   colorPicker.click();
-}
-
-function toolbarAction(event) {
-  const button = event.target.closest("button");
-  if (!button) return;
-  const action = button.dataset.action;
-
-  if (event.target.classList.contains("color-button")) {
-    state.color = event.target.dataset.color;
-    cursor.style.background = state.color;
-    return;
-  }
-
-  switch (action) {
-    case "collapse":
-      state.toolbar.classList.toggle("collapsed");
-    break;
-
-    case "add-color":
-      addColor();
-    break;
-
-    case "copyAll":
-      copyHighlightTexts();
-    break;
-
-    case "deleteAll":
-      deleteAllHighlights();
-    break;
-  }
 }
 
 
