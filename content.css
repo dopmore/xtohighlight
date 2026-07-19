@@ -28,6 +28,12 @@
   pointer-events: var(--highlights-selectable, none);
   z-index: 0;
   opacity: 0.75;
+  transition: opacity 100ms ease;
+}
+
+.highlight.selected {
+  opacity: 0.9;
+  outline: 1px solid black;
 }
 
 .cursor {
@@ -64,6 +70,8 @@
   z-index: 0;
 }
 
+
+
 #highlighter-toolbar {
   position: fixed;
 
@@ -73,12 +81,10 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 10px 0;
-  gap: 5px;
   
-  width: 50px;
-  background: white;/* idk */
-  border-radius: 15px;
+  width: 32px;
+  background: seashell;/* idk */
+  border-radius: 10px;
   z-index: 999999;
 
   user-select: none;
@@ -98,7 +104,6 @@
   width: 32px;
   height: 32px;
   border: none;
-  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -112,7 +117,6 @@
 #highlighter-toolbar .colors {
   display: flex;
   flex-direction: column;
-  gap: 5px;
 }
 
 #highlighter-toolbar .color-button {
@@ -121,6 +125,39 @@
   width: 100%;
   font-weight: bolder;
 }
+
+#highlighter-toolbar button[data-action="addColor"] {
+  background: linear-gradient(
+    135deg,
+    rgba(255,0,0,.5),
+    rgba(255,165,0,.5),
+    rgba(255,255,0,.5),
+    rgba(0,255,0,.5),
+    rgba(0,255,255,.5),
+    rgba(0,0,255,.5),
+    rgba(238,130,238,.5)
+  );
+}
+
+#highlighter-toolbar button[data-action="deleteAll"] {
+  background-image: url(images/delete-31.png);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-color: transparent;
+  background-size: 23px;
+  font-size: smaller;
+}
+
+#highlighter-toolbar button[data-action="copyAll"] {
+  position: relative;
+  font-size: 23px;
+}
+
+#highlighter-toolbar button[data-action="copyAll"] span {
+  position: absolute;
+  font-size: 15px;
+}
+
 
 #highlighter-toolbar.collapsed {
   width: 32px;
@@ -145,5 +182,6 @@
   background-image: url(images/icon-32.png);
   background-position: center;
   background-repeat: no-repeat;
-  background-size: cover;
+  background-color: transparent;
+  background-size: contain;
 }

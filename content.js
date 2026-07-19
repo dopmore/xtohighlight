@@ -34,9 +34,9 @@ const cursor = document.createElement("div");
 cursor.className = "cursor";
 document.body.appendChild(cursor);
 
-function init() {
-  loadHighlights(); // try loading saved highlights on page-basis
-  loadSettings();
+async function init() {
+  await loadHighlights(); // try loading saved highlights on page-basis
+  await loadSettings();
   createToolbar();
   
   state.color = Object.values(state.config.shortcuts.colors)[0];
@@ -175,8 +175,6 @@ function saveHighlight() {
   const range = selection.getRangeAt(0);
   if (!range.toString().trim()) return;
 
-  navigator.clipboard.writeText(range.toString().trim()); // copy last highlight
-
   const offsets = rangeToOffsets(range);
 
   if (!offsets) {
@@ -216,7 +214,7 @@ function copyHighlightTexts(color = null) {
 
   const text = highlights.map(h => offsetToRange(h.start, h.end)?.toString().trim()).join("\n");
 
-  navigator.clipboard.writeText(text);
+  if (text) navigator.clipboard.writeText(text); // prevent copying nothing
 }
 
 function deleteAllHighlights() {
@@ -224,6 +222,12 @@ function deleteAllHighlights() {
   saveHighlights();
   clearRects(state.rects.highlightRects);
   clearRects(state.rects.previewRects);
+}
+
+function selectHighlight(highlight) {
+  state.rects.highlightRects.forEach(rect => {
+    rect.classList.toggle("selected", highlight && Number(rect.dataset.index) === state.highlights.indexOf(highlight));
+  });
 }
 
 // Rect-logic, drawing highlights
@@ -343,9 +347,9 @@ function createToolbar() {
   state.toolbar.innerHTML = `
     <button class="logo" data-action="logo"></button>
     <div class="colors"></div>
-    <button data-action="add-color"> + </button>
-    <button data-action="copyAll"> c </button>
-    <button data-action="deleteAll"> d </button>
+    <button data-action="addColor"> + </button>
+    <button data-action="copyAll"> 📋 <span>${state.config.shortcuts.copyAll}</span> </button>
+    <button data-action="deleteAll"> ${state.config.shortcuts.deleteAll} </button>
     <button data-action="collapse"> ^ </button>
   `;
 
@@ -361,6 +365,10 @@ function createToolbar() {
     const action = button.dataset.action;
 
     if (event.target.classList.contains("color-button")) {
+      if (state.color === event.target.dataset.color) {
+        copyHighlightTexts(state.color);
+        return;
+      }
       state.color = event.target.dataset.color;
       cursor.style.background = state.color;
       return;
@@ -375,7 +383,7 @@ function createToolbar() {
         if (!moved) state.toolbar.classList.toggle("collapsed");
       break;
 
-      case "add-color":
+      case "addColor":
         addColor();
       break;
 
@@ -384,7 +392,7 @@ function createToolbar() {
       break;
 
       case "deleteAll":
-        deleteAllHighlights();
+        if (confirm("Delete all Highlights?")) deleteAllHighlights();
       break;
     }
   });
@@ -470,7 +478,6 @@ function addColor() {
   colorPicker.click();
 }
 
-
 // EventListeners
 document.addEventListener("keydown", event => {
   if (event.target.isContentEditable ||
@@ -508,8 +515,6 @@ document.addEventListener("keydown", event => {
       if (!state.active) return;
       state.active = false;
     break;
-
-  
   }
       
   if (!state.active) {
@@ -531,8 +536,17 @@ document.addEventListener("mousemove", event => {
   if (!state.active) return;
   const element = document.elementFromPoint(event.clientX, event.clientY);
   if (!element) return;
+
+  if (element.closest("#highlighter-toolbar")) {
+    cursor.style.display = "none";
+    return;
+  } else {
+    cursor.style.display = "block";
+  }
   
   const highlight = getHighlightFromPoint(event.clientX + scrollX, event.clientY + scrollY);
+
+  selectHighlight(highlight); // select / remove highlight selection
 
   cursor.classList.toggle("action-icons", highlight && highlight.color===state.color); // adds copy / delete icon to indicate that actions are possible
   
@@ -578,6 +592,11 @@ document.addEventListener("selectionchange", () => {
 });
 
 window.addEventListener("resize", () => {
+  if (!state.active) return;
+  updateHighlightRects();
+});
+
+window.addEventListener("scroll", () => {
   if (!state.active) return;
   updateHighlightRects();
 });
