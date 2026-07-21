@@ -16,7 +16,7 @@ const state = {
     }
   },
   
-  color: "#ffff0050",
+  color: null,
   
   highlights: [],
   // [{start: number, end: number, color, color: currentcolor}]
@@ -26,20 +26,21 @@ const state = {
   },
   
   textOffsets: new Map(), // index for conversions\
-  toolbar: null
+  toolbar: null,
+  contextMenu: null,
+  cursor: null
 };
 
-
-const cursor = document.createElement("div");
-cursor.className = "cursor";
-document.body.appendChild(cursor);
 
 async function init() {
   await loadHighlights(); // try loading saved highlights on page-basis
   await loadSettings();
+  createCursor();
   createToolbar();
+  createContextMenu();
   
   state.color = Object.values(state.config.shortcuts.colors)[0];
+  state.cursor.style.background = state.color;
   buildTextIndex();
   console.log("loaded highlighter");
 }
@@ -208,7 +209,12 @@ function getHighlightFromPoint(x, y) {
   return rect ? state.highlights[Number(rect.dataset.index)] : null
 }
 
-function copyHighlightTexts(color = null) {
+function copyHighlightTexts(highlight = null, color = null) {
+  if (highlight) {
+    navigator.clipboard.writeText(offsetToRange(highlight.start, highlight.end)?.toString());
+    return;
+  }
+
   const highlights = color ? 
   state.highlights.filter(h => h.color === color) : state.highlights;
 
@@ -217,7 +223,11 @@ function copyHighlightTexts(color = null) {
   if (text) navigator.clipboard.writeText(text); // prevent copying nothing
 }
 
-function deleteAllHighlights() {
+function deleteAllHighlights(askConfirm = false) {
+  if (askConfirm) {
+    if (!confirm("Delete all Highlights?")) return;
+  }
+  
   state.highlights = [];
   saveHighlights();
   clearRects(state.rects.highlightRects);
@@ -366,11 +376,11 @@ function createToolbar() {
 
     if (event.target.classList.contains("color-button")) {
       if (state.color === event.target.dataset.color) {
-        copyHighlightTexts(state.color);
+        copyHighlightTexts(null, state.color);
         return;
       }
       state.color = event.target.dataset.color;
-      cursor.style.background = state.color;
+      state.cursor.style.background = state.color;
       return;
     }
 
@@ -392,7 +402,7 @@ function createToolbar() {
       break;
 
       case "deleteAll":
-        if (confirm("Delete all Highlights?")) deleteAllHighlights();
+        deleteAllHighlights(true);
       break;
     }
   });
@@ -478,6 +488,128 @@ function addColor() {
   colorPicker.click();
 }
 
+// cursor
+
+function createCursor() {
+  state.cursor = document.createElement("div");
+  state.cursor.className = "cursor";
+  document.body.appendChild(state.cursor);
+}
+
+// contextMenu
+
+function createContextMenu() {
+  let contextMenuTimeout;
+  state.contextMenu = document.createElement("div");
+  state.contextMenu.id = "highlighter-context-menu";
+
+  document.body.appendChild(state.contextMenu);
+
+  state.contextMenu.addEventListener("click", event => {
+    const button = event.target.closest("button");
+    if (!button) return;
+
+    const action = button.dataset.action;
+    const data = state.contextMenu.dataset;
+
+    const color = data.color;
+    const index = Number(data.index);
+
+    const colors = state.config.shortcuts.colors;
+    const key = Object.keys(colors).find(k => colors[k] === color);
+
+
+    switch (action) {
+      case "copy":
+        if (!isNaN(index)) {
+          copyHighlightTexts(state.highlights[index]);
+        } else {
+          copyHighlightTexts();
+        }
+      break;
+        
+      case "delete":
+        if (!isNaN(index)) {
+          removeHighlight(state.highlights[index]);
+        } else {
+          deleteAllHighlights(true);
+        }
+      break;
+
+      case "default":
+        const defaultColor = colors[key];
+        delete colors[key];
+        state.config.shortcuts.colors = {
+          [key]: defaultColor,
+          ...colors
+        };
+
+        saveSettings();
+        renderColors();
+      break;
+
+      case "copyColor":
+        copyHighlightTexts(null, color);
+      break;
+
+      case "deleteColor":
+        state.highlights = state.highlights.filter(h => h.color !== color);
+        delete colors[key];
+        saveSettings();
+        renderColors();
+        saveHighlights();
+        updateHighlightRects();
+      break;
+        
+      case "deleteColorHighlights":
+        state.highlights = state.highlights.filter(h => h.color !== color);
+        saveHighlights();
+        updateHighlightRects();
+      break;
+
+      case "copyColorHighlights":
+        copyHighlightTexts(null, color)
+      break;
+    }
+
+    state.contextMenu.classList.remove("visible");
+  });
+
+  state.contextMenu.addEventListener("mouseleave", () => {
+    contextMenuTimeout = setTimeout(() => {
+      state.contextMenu.classList.remove("visible");
+    }, 200);
+  });
+
+  state.contextMenu.addEventListener("mouseenter", () => {
+    clearTimeout(contextMenuTimeout);  // let user reenter 
+  });
+}
+
+function showContextMenu(x, y, items, data = {}) {
+  state.contextMenu.innerHTML = "";
+
+  Object.assign(state.contextMenu.dataset, data);
+
+  for (const item of items) {
+    const button = document.createElement("button");
+    button.textContent = item.text;
+    button.dataset.action = item.action;
+    
+    state.contextMenu.appendChild(button);
+  }
+  
+  state.contextMenu.classList.add("visible");
+
+  const rect = state.contextMenu.getBoundingClientRect();
+
+  const newLeft = Math.max(0, Math.min(x, window.innerWidth - rect.width));
+  const newTop = Math.max(0, Math.min(y, window.innerHeight - rect.height));
+
+  state.contextMenu.style.left = `${newLeft + scrollX}px`;
+  state.contextMenu.style.top = `${newTop + scrollY}px`;
+} 
+
 // EventListeners
 document.addEventListener("keydown", event => {
   if (event.target.isContentEditable ||
@@ -489,12 +621,12 @@ document.addEventListener("keydown", event => {
 
   if (colors[key]){
     if (state.color === colors[key]) {
-      copyHighlightTexts(state.color);
+      copyHighlightTexts(null, state.color);
       return;
     }
 
     state.color = colors[key];
-    cursor.style.background = colors[key];
+    state.cursor.style.background = colors[key];
   } 
 
   switch (event.key.toLocaleLowerCase()) {
@@ -508,7 +640,7 @@ document.addEventListener("keydown", event => {
     break;
 
     case state.config.shortcuts.deleteAll:
-      if (confirm("Delete all Highlights?")) deleteAllHighlights();
+      deleteAllHighlights(true);
     break;
 
     case "Escape":
@@ -528,7 +660,7 @@ document.addEventListener("keydown", event => {
 
   document.documentElement.classList.toggle("highlighter-active", state.active);
   state.toolbar.classList.toggle("hidden", !state.active);
-  cursor.style.display = state.active ? "block" : "none";
+  state.cursor.style.display = state.active ? "block" : "none";
 });
 
 
@@ -538,27 +670,24 @@ document.addEventListener("mousemove", event => {
   if (!element) return;
 
   if (element.closest("#highlighter-toolbar")) {
-    cursor.style.display = "none";
+    state.cursor.style.display = "none";
     return;
   } else {
-    cursor.style.display = "block";
+    state.cursor.style.display = "block";
   }
   
   const highlight = getHighlightFromPoint(event.clientX + scrollX, event.clientY + scrollY);
 
-  selectHighlight(highlight); // select / remove highlight selection
-
-  cursor.classList.toggle("action-icons", highlight && highlight.color===state.color); // adds copy / delete icon to indicate that actions are possible
-  
+  selectHighlight(highlight); // select / remove highlight selection  
 
   const fs = parseFloat(getComputedStyle(element).fontSize) || 16;
   const h = Math.max(14, fs * 1.2);
   const w = Math.max(10, fs * 0.7);
   
-  cursor.style.width = `${w}px`;
-  cursor.style.height = `${h}px`;
-  cursor.style.left = `${event.clientX}px`;
-  cursor.style.top = `${event.clientY}px`;
+  state.cursor.style.width = `${w}px`;
+  state.cursor.style.height = `${h}px`;
+  state.cursor.style.left = `${event.clientX}px`;
+  state.cursor.style.top = `${event.clientY}px`;
 });
 
 document.addEventListener("mouseup", () => {
@@ -580,10 +709,54 @@ document.addEventListener("contextmenu", event => {
   if (!state.active) return;
   event.preventDefault();
   
-  const highlight = getHighlightFromPoint(event.clientX + scrollX, event.clientY + scrollY);
-  const range = offsetToRange(highlight.start, highlight.end);
+  const target = event.target;
 
-  if (range) navigator.clipboard.writeText(range.toString());
+  if(target.closest(".color-button")) {
+    showContextMenu(
+      event.clientX,
+      event.clientY,
+      [
+        {text: "copy color highlights", action: "copyColorHighlights"},
+        {text: "delete color highlights", action: "deleteColorHighlights"},
+        {text: "delete color", action: "deleteColor"},
+        {text: "set default color", action: "default"}
+      ],
+      {color: target.closest(".color-button").dataset.color}
+    );
+
+    return;
+  }
+  
+  const highlight = getHighlightFromPoint(event.clientX + scrollX, event.clientY + scrollY);
+  
+  if (highlight) {
+    showContextMenu(
+      event.clientX,
+      event.clientY,
+      [
+        {text: "copy highlight", action: "copy"},
+        {text: "delete highlight", action: "delete"},
+        {text: "copy color highlights", action: "copyColorHighlights"},
+        {text: "delete color highlights", action: "deleteColorHighlights"},
+        {text: "set default color", action: "default"}
+      ],
+      {
+        index: state.highlights.indexOf(highlight),
+        color: highlight.color
+      }
+    );
+    return;
+  }
+  
+  showContextMenu(
+    event.clientX,
+    event.clientY,
+    [
+      {text: "copy all highlights", action: "copy"},
+      {text: "delete all highlights", action: "delete"},
+    ],
+    {}
+  );
 });
 
 document.addEventListener("selectionchange", () => {
@@ -599,13 +772,15 @@ window.addEventListener("resize", () => {
 window.addEventListener("scroll", () => {
   if (!state.active) return;
   updateHighlightRects();
+  state.contextMenu.classList.remove("visible");
+
 });
 
 // logic for not showing cursor when leaving window, idk works
 
-document.addEventListener("focus", () => {if (state.active) cursor.style.display = "block";});
-document.addEventListener("mouseover", () => {if (state.active) cursor.style.display = "block";});
-document.addEventListener("blur", () => {cursor.style.display = "none";});
-window.addEventListener("mouseout", event => {if (!event.relatedTarget) cursor.style.display = "none";});
+document.addEventListener("focus", () => {if (state.active) state.cursor.style.display = "block";});
+document.addEventListener("mouseover", () => {if (state.active) state.cursor.style.display = "block";});
+document.addEventListener("blur", () => {state.cursor.style.display = "none";});
+window.addEventListener("mouseout", event => {if (!event.relatedTarget) state.cursor.style.display = "none";});
 
 init();

@@ -21,9 +21,13 @@
   cursor:pointer !important;
 }
 
+.highlighter-active #highlighter-context-menu,
+.highlighter-active #highlighter-context-menu * {
+  pointer-events: auto !important;
+}
+
 .highlight {
   position: absolute;
-  color: black;
   border-radius: 10px;
   pointer-events: var(--highlights-selectable, none);
   z-index: 0;
@@ -32,8 +36,7 @@
 }
 
 .highlight.selected {
-  opacity: 0.9;
-  outline: 1px solid black;
+  opacity: 1;
 }
 
 .cursor {
@@ -46,31 +49,8 @@
   background-color: #ffff0050;
   transform: translate(-50%, -50%); /* center circle */
   transform-origin: top left;
-
+  z-index: 2147483647;
 }
-
-.cursor.action-icons::before {
-  content: "";
-  position: absolute;
-  top: -8px;
-  left: -8px;
-  width: 8px;
-  height: 8px;
-  background-image: url("images/delete.png");
-  z-index: 0;
-}
-.cursor.action-icons::after {
-  content: "";
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  width: 8px;
-  height: 8px;
-  background-image: url("images/copy.png");
-  z-index: 0;
-}
-
-
 
 #highlighter-toolbar {
   position: fixed;
@@ -85,15 +65,17 @@
   width: 32px;
   background: seashell;/* idk */
   border-radius: 10px;
+  box-sizing: border-box;
+  border: 3px solid black;
+  border-top: none;
   z-index: 999999;
 
   user-select: none;
-  cursor: grab;
   backdrop-filter: blur(8px);
 }
 
 #highlighter-toolbar .logo:active {
-  cursor:grabbing
+  cursor: grabbing !important;
 }
 
 #highlighter-toolbar.hidden {
@@ -122,8 +104,8 @@
 #highlighter-toolbar .color-button {
   color: black;
   font-size: 12px;
-  width: 100%;
   font-weight: bolder;
+  width: 28px;
 }
 
 #highlighter-toolbar button[data-action="addColor"] {
@@ -137,6 +119,7 @@
     rgba(0,0,255,.5),
     rgba(238,130,238,.5)
   );
+  width: 28px;
 }
 
 #highlighter-toolbar button[data-action="deleteAll"] {
@@ -164,6 +147,7 @@
   height: 32px;
   border-radius: 50%;
   padding: 0;
+  border: none;
   gap: 0;
   justify-content: center;
   align-items: center;
@@ -178,10 +162,40 @@
   width: 32px;
   height: 32px;
   border: none;
-  cursor: grab;
+  cursor: grab !important;
   background-image: url(images/icon-32.png);
   background-position: center;
   background-repeat: no-repeat;
   background-color: transparent;
   background-size: contain;
+}
+
+#highlighter-context-menu {
+  position: absolute;
+  display: none;
+  background: seashell;
+  z-index: 999999;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+#highlighter-context-menu button {
+  background: none;
+  border: none;
+  text-align: left;
+  border-top: 1px solid black;
+  white-space: nowrap;
+}
+
+#highlighter-context-menu button:first-child {
+  border-top: none;
+}
+
+#highlighter-context-menu button:hover{
+  background-color: #ebdacf;
+}
+#highlighter-context-menu.visible {
+  display: flex;
+  pointer-events: auto !important;
+  flex-direction: column;
 }
