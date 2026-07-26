@@ -105,7 +105,9 @@
   color: black;
   font-size: 12px;
   font-weight: bolder;
-  width: 28px;
+  box-sizing: border-box;
+  padding: 0 3px;
+  background-clip: content-box !important;
 }
 
 #highlighter-toolbar button[data-action="addColor"] {
@@ -119,7 +121,7 @@
     rgba(0,0,255,.5),
     rgba(238,130,238,.5)
   );
-  width: 28px;
+  width: 100%;
 }
 
 #highlighter-toolbar button[data-action="deleteAll"] {
@@ -163,7 +165,7 @@
   height: 32px;
   border: none;
   cursor: grab !important;
-  background-image: url(images/icon-32.png);
+  background-image: url(images/icon-48.png);
   background-position: center;
   background-repeat: no-repeat;
   background-color: transparent;

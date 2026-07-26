@@ -458,7 +458,7 @@ function renderColors() {
   
     button.className = "color-button";
     button.dataset.color = color;
-    button.style.background = color;
+    button.style.backgroundColor = color;
 
     button.dataset.shortcut = shortcut;
     button.textContent = shortcut.toUpperCase();
