@@ -74,10 +74,9 @@ and any keys assigned to colors for switching to that color (If pressed twice it
 
 
 
-[stars-shield]: https://img.shields.io/github/stars/othneildrew/Best-README-Template.svg?style=for-the-badge
+[stars-shield]: https://img.shields.io/github/stars/dopmore/xtohighlight
 [stars-url]: https://github.com/dopmore/xtohighlight/stargazers
-[license-shield]: https://img.shields.io/github/license/othneildrew/Best-README-Template.svg?style=for-the-badge
+[license-shield]: https://img.shields.io/github/license/dopmore/xtohighlight
 [license-url]: https://github.com/dopmore/xtohighlight/blob/master/LICENSE.txt
-
-[issues-shield]: https://img.shields.io/github/issues/othneildrew/Best-README-Template.svg?style=for-the-badge
+[issues-shield]: https://img.shields.io/github/issues/dopmore/xtohighlight
 [issues-url]: https://github.com/dopmore/xtohighlight/issues
