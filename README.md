@@ -71,7 +71,9 @@ The main shortcuts are
 
 and any keys assigned to colors for switching to that color (If pressed twice it will copy all highlights of that color).
 
+## Development
 
+This project only uses native javascript and css.
 
 
 [stars-shield]: https://img.shields.io/github/stars/dopmore/xtohighlight
