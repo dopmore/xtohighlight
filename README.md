@@ -11,7 +11,7 @@
   <p align="center">
     A simple Firefox WebExtension for making and managing Highlights
     <br />
-    <a href="">View Demo</a>
+    <a href="https://github.com/dopmore/xtohighlight/blob/main/README-IMAGES/showcase.mp4">View Demo</a>
     &middot;
     <a href="https://github.com/dopmore/xtohighlight/issues/new?labels=bug&template=bug-report---.md">Report Bug</a>
   </p>
