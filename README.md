@@ -11,11 +11,9 @@
   <p align="center">
     A simple Firefox WebExtension for making and managing Highlights
     <br />
-    <a href="https://github.com/github_username/repo_name">View Demo</a>
+    <a href="">View Demo</a>
     &middot;
     <a href="https://github.com/dopmore/xtohighlight/issues/new?labels=bug&template=bug-report---.md">Report Bug</a>
-    &middot;
-    <a href="https://github.com/github_username/repo_name/issues/new?labels=enhancement&template=feature-request---.md">Request Feature</a>
   </p>
 </div>
 

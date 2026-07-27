@@ -698,6 +698,7 @@ document.addEventListener("mouseup", () => {
 document.addEventListener("mousedown", event => {
   if (!state.active) return;
   if (event.button !== 0) return;
+  if (event.target.closest("#highlighter-context-menu")) return;
   const highlight = getHighlightFromPoint(event.clientX + scrollX, event.clientY + scrollY);
   if (highlight && highlight.color === state.color) {
     removeHighlight(highlight);
