@@ -35,6 +35,8 @@ As the WebExtension is pending verification by AMO (addons.mozilla.org), you can
 3. clicking Load Temporary Add-On..
 4. selecting the manifest.json in CODE
 
+Alternatively download the zip from the Releases and select it instead of the manifest.json.  
+
 ![Loading the WebExtension](<README-IMAGES/Screenshot 2026-07-26 153816.png>)
 
 ### User-Guide
