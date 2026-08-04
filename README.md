@@ -11,7 +11,7 @@
   <p align="center">
     A simple Firefox WebExtension for making and managing Highlights
     <br />
-    <a href="">View Demo</a>
+    <a href="https://github.com/dopmore/xtohighlight/blob/main/README-IMAGES/showcase.mp4">View Demo</a>
     &middot;
     <a href="https://github.com/dopmore/xtohighlight/issues/new?labels=bug&template=bug-report---.md">Report Bug</a>
   </p>
@@ -34,6 +34,8 @@ As the WebExtension is pending verification by AMO (addons.mozilla.org), you can
 2. going to about:debugging
 3. clicking Load Temporary Add-On..
 4. selecting the manifest.json in CODE
+
+Alternatively download the zip from the Releases and select it instead of the manifest.json.  
 
 ![Loading the WebExtension](<README-IMAGES/Screenshot 2026-07-26 153816.png>)
 
@@ -71,13 +73,14 @@ The main shortcuts are
 
 and any keys assigned to colors for switching to that color (If pressed twice it will copy all highlights of that color).
 
+## Development
+
+This project only uses native javascript and css.
 
 
-
-[stars-shield]: https://img.shields.io/github/stars/othneildrew/Best-README-Template.svg?style=for-the-badge
+[stars-shield]: https://img.shields.io/github/stars/dopmore/xtohighlight
 [stars-url]: https://github.com/dopmore/xtohighlight/stargazers
-[license-shield]: https://img.shields.io/github/license/othneildrew/Best-README-Template.svg?style=for-the-badge
+[license-shield]: https://img.shields.io/github/license/dopmore/xtohighlight
 [license-url]: https://github.com/dopmore/xtohighlight/blob/master/LICENSE.txt
-
 [issues-shield]: https://img.shields.io/github/issues/dopmore/xtohighlight
 [issues-url]: https://github.com/dopmore/xtohighlight/issues
